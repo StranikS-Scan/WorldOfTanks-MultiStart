@@ -1,44 +1,47 @@
-## WorldOfTanks-MultiStart
+# WorldOfTanks-MultiStart
 
-Patcher for the executable file to unlock multi-launch in the game client. The program uses the well-known list of signatures [signatures.list](./signatures.list) and downloading it at startup. You can download list and put it in the program folder, then program will not download list from the network. In this case, you can add new signatures yourself.
+Patcher for the executable file to unlock multi-launch in the game client. The program uses the well-known list of signatures [signatures.list](./signatures.list) and downloading it from repo. You can download list manually and put it in the program folder, in this case program will not download list from the network.
 
-The program initially tries to determine the version of the game client from the **"version.xml"** file. Then it analyzes the version of the **"WorldOfTanks.exe"** file. If the file **"version.xml"** is not available until the game client version is taken from the **exe**-file properties. After that, the program tries to find the exact entry in the list of signatures. If she is not there, program finds the nearest known record and offers to use it.
+The program initially tries to determine the version of the game client from the **"version.xml"** file. Then it analyzes the version of the **"WorldOfTanks.exe"** file. If the file **"version.xml"** is not available then the game client version is taken from the **exe**-file properties only. After that, the program tries to find the exact entry in the list of signatures. If she is not there, program finds the nearest known record and offers to use it. So, if the signature does not change when new versions of the game are released, then you do not need to make a new entry in the list of signatures.
 
-### Using (for players)
+![ScreenShot](./Example.png)
 
-1. Download the archive and unzip the **exe**-file to the game folder
+## Using (for players)
+
+1. Download the [archive](./zip/) and unzip the **exe**-file to the game folder
 2. Run the **exe**-file to patch the game executable
 
 When patching an executable file, the program first creates a backup in the form of a **"*.backup"** file. If you want to roll back the changes made by the program, delete the patched file and change the extansion of the backup file to the original one.
 
-### Command line arguments (for mods developers)
+## Command line arguments (for mods developers)
 
 The program supports launching from the command line. The list of arguments passing is given below:
 
-WIN32-format   | Description
----------------|------------------------
---wot-path=""  | Path to the game folder
---silent-mode  | Do not ask questions
---not-backup   | Do not create backup 
+WIN32-format  | Required | Description
+--------------|----------|------------------------
+--wot-path="" |    x     | Path to the game folder
+--silent-mode |          | Do not ask questions
+--no-backup   |          | Do not create backup
+--no-add-mark |          | Do not add a mark about modification at the end of the exe-file
 
-### Add signature to list
+## Add signature to list
 
-Signatures are recorded in the [signatures.list](./signatures.list) file. One line corresponds to one record. The following is the decryption of the fields:
+Signatures are recorded in the [signatures.list](./signatures.list) file. One line corresponds to one record. Lines are written in the order of increasing the version number of the game client and the **exe**-file version number of the game. The following is the decryption of the fields:
 
 Field         | Format   | Description
 --------------|----------|-----------------------------------------------------------
-ClientVersion | N.N.N... | Game client version number from the **"version.xml"** file. If the field value is repeated, then you can leave it blank
+ClientVersion | N.N.N... | Game client version number from the **"version.xml"** file
 FileVersion   | N.N.N... | Value of the **"FileVersion"** field from the properties of the game **exe**-file. If the value is not known, put a hyphen
-FileID        |   N      | ID number of the **exe**-file, located after the # symbol in the **"FileVersion"** field. If the value is not known, put a hyphen
+FileID        |   N      | ID number of the **exe**-file, located after the **#** symbol in the **"FileVersion"** field. If the value is not known, put a hyphen
 OldSign       | [Hexs]   | Signature to find
 NewSign       | [Hexs]   | Signature to replace
-EntryNumber   |   N      | Match number at which to replace, for example: 1 - replace once only at the first match, 2 - replace once and only at the second match. If the field is empty, then all found matches will be replaced
+EntryNumber   |   N      | Match number at which to replace, for example: 1 - replace once only at the first match, 2 - replace once and only at the second match. If the field is hyphen, then all found matches will be replaced
 
-If the signature does not change when new versions of the game are released, then you do not need to make a new entry in the list of signatures.
+**OldSign** and **newSign** fields contain the signatures themselves. The signature is specified as a sequence of bytes, which should be separated by a space or tab. if any bytes should be ignored then they can be replaced as **XX**.
 
-### Signature search
+## Signature search
 
-Keywords to search for new signatures using the [IDA-Disassembler](https://www.hex-rays.com/) are noted in the listing below on the example of WorldOfTanks.exe **1.5.1.321 #1156535**:
+Keywords to search for new signatures using the [IDA-Disassembler](https://www.hex-rays.com/) are noted in the listing below on the example of **WorldOfTanks.exe 1.5.1.321 #1156535**:
 ```
 .text:0063153F 76 71                             jbe     short loc_6315B2
 .text:00631541 6A 40                             push    40h             ; uType
@@ -47,6 +50,7 @@ Keywords to search for new signatures using the [IDA-Disassembler](https://www.h
 .text:0063154D 6A 00                             push    0               ; hWnd
 ========================================= KEYWORDS #1 =========================================
 .text:0063154F FF 15 24 1B AF 01                 call    ds:MessageBoxW
+-----------------------------------------------------------------------------------------------
 .text:00631555 8B 55 E8                          mov     edx, [ebp+var_18]
 .text:00631558 C6 45 FC 02                       mov     byte ptr [ebp+var_4], 2
 .text:0063155C 83 FA 08                          cmp     edx, 8
@@ -64,6 +68,7 @@ Keywords to search for new signatures using the [IDA-Disassembler](https://www.h
 .text:00631583 76 06                             jbe     short loc_63158B
 ========================================= KEYWORDS #2 =========================================
 .text:00631585 FF 15 3C 1F AF 01                 call    ds:_invalid_parameter_noinfo_noreturn
+-----------------------------------------------------------------------------------------------
 .text:0063158B                   loc_63158B:                             ; CODE XREF: sub_6312C0+2B3^j
 .text:0063158B                                                           ; sub_6312C0+2C3^j
 .text:0063158B 52                                push    edx
@@ -94,4 +99,5 @@ Keywords to search for new signatures using the [IDA-Disassembler](https://www.h
 ========================================= REPLACEABLE CODE =========================================
 .text:006315E3 74 75                             jz      short loc_63165A ; [74 75   74<-EB   [EB 75
 .text:006315E5 E8 D6 9D 71 00                    call    sub_D4B3C0       ;  E8]               E8]
+----------------------------------------------------------------------------------------------------
 ```

@@ -1,0 +1,4 @@
+#-------------------- Zip-Packer parameters --------------------
+
+exe  = "C:\Program Files\7-Zip\7z.exe"
+arg  = "a -tzip -mx9 ..\zip\WOTMultiStartPatcher_1.0.0.zip WOTMultiStartPatcher.exe"
