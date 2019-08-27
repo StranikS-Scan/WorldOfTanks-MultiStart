@@ -1,4 +1,4 @@
-program WOTMultiStartPatcher;
+program WOTMultiStart;
 
 {$APPTYPE CONSOLE}
 
@@ -6,8 +6,8 @@ uses
   Windows, Classes, SysUtils, StrUtils, WinInet;
 
 const
-  C_VERSION = '1.0.0';
-  C_DATE    = '24/08/2019';
+  C_VERSION = '1.0.1';
+  C_DATE    = '27/08/2019';
 
   C_ARG_WOT_PATH_WIN32      = '--wot-path=';
   C_ARG_SILENT_MODE_WIN32   = '--silent-mode';
@@ -615,7 +615,7 @@ var
   ReplaceResult: RReplaceResult;
 
 begin
-Writeln(Format('Patcher for WOT ver.%s %s (C) 2014-2019 StranikS_Scan:', [C_VERSION, C_DATE]));
+Writeln(Format('MultiStart for WOT ver.%s %s (C) 2014-2019 StranikS_Scan:', [C_VERSION, C_DATE]));
 Writeln('');
 
 //------------- Parsing command line arguments -------------
