@@ -1,14 +1,14 @@
 # WorldOfTanks-MultiStart
 
-Patcher for the executable file to unlock multi-launch in the game client. The program uses the well-known list of signatures [signatures.list](./signatures.list) and downloading it from repo. You can download list manually and put it in the program folder, in this case program will not download list from the network.
+Patcher for the x32 executable file to unlock multi-launch in the game client. The program uses the well-known list of signatures [signatures.list](./signatures.list) and downloading it from repo. You can download list manually and put it in the program folder, in this case program will not download list from the network.
 
-The program initially tries to determine the version of the game client from the **"version.xml"** file. Then it analyzes the version of the **"WorldOfTanks.exe"** file. If the file **"version.xml"** is not available then the game client version is taken from the **exe**-file properties only. After that, the program tries to find the exact entry in the list of signatures. If she is not there, program finds the nearest known record and offers to use it. So, if the signature does not change when new versions of the game are released, then you do not need to make a new entry in the list of signatures.
+The program initially tries to determine the version of the game client from the **"version.xml"** file. Then it analyzes the version of the **"win32\WorldOfTanks.exe"** file. If the file **"version.xml"** is not available then the game client version is taken from the **exe**-file properties only. After that, the program tries to find the exact entry in the list of signatures. If she is not there, program finds the nearest known record and offers to use it. So, if the signature does not change when new versions of the game are released, then you do not need to make a new entry in the list of signatures.
 
 ![ScreenShot](./Example.png)
 
 ## Using (for players)
 
-1. Download the [archive](./zip/) and unzip the **exe**-file to the game folder
+1. Download the [archive](./zip/) and unzip the **exe**-file to the game **root**-folder or **win32**-folder
 2. Run the **exe**-file to patch the game executable
 
 When patching an executable file, the program first creates a backup in the form of a **"*.backup"** file. If you want to roll back the changes made by the program, delete the patched file and change the extansion of the backup file to the original one.
@@ -19,7 +19,7 @@ The program supports launching from the command line. The list of arguments pass
 
 WIN32-format  | Required | Description
 --------------|----------|------------------------
---wot-path="" |    x     | Path to the game folder
+--wot-path="" |    x     | Path to the game **root**-folder or **win32**-folder
 --silent-mode |          | Do not ask questions
 --no-backup   |          | Do not create backup
 --no-add-mark |          | Do not add a mark about modification at the end of the exe-file

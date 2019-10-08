@@ -6,8 +6,8 @@ uses
   Windows, Classes, SysUtils, StrUtils, WinInet;
 
 const
-  C_VERSION = '1.0.1';
-  C_DATE    = '27/08/2019';
+  C_VERSION = '1.0.2';
+  C_DATE    = '08/10/2019';
 
   C_ARG_WOT_PATH_WIN32      = '--wot-path=';
   C_ARG_SILENT_MODE_WIN32   = '--silent-mode';
@@ -645,7 +645,18 @@ if Length(V_ARG_WOT_PATH)=0 then
 //-------------- Search and analysis of game files ------------------
 
 Write(C_H_PREFIX+'Game client exe-file search... ');
-ExeFileName:=V_ARG_WOT_PATH+'WorldOfTanks.exe';
+Str:=LowerCase(ExtractFileName(LeftStr(V_ARG_WOT_PATH, Length(V_ARG_WOT_PATH)-1)));
+if Pos('win64', Str)>0 then
+ begin
+ Writeln('error!');
+ Writeln('');
+ Write(C_S_PREFIX+'Program does not work with the x64-file. Press enter to exit...');
+ if not V_ARG_SILENT_MODE then Readln;
+ Halt;
+ end;
+if (Pos('win32', Str)=0) and DirectoryExists(V_ARG_WOT_PATH+'win32') then
+ ExeFileName:=V_ARG_WOT_PATH+'win32\WorldOfTanks.exe'
+else ExeFileName:=V_ARG_WOT_PATH+'WorldOfTanks.exe';
 if FileExists(ExeFileName) then
  begin
  i:=Length(C_MODIFICATION_MARK);
