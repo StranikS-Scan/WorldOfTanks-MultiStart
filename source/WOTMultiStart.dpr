@@ -5,20 +5,36 @@ program WOTMultiStart;
 uses
   Windows, Classes, SysUtils, StrUtils, WinInet;
 
+{$DEFINE WOT32} //Do comment line to compile WOT64-version
+
 const
-  C_VERSION = '1.0.2';
-  C_DATE    = '08/10/2019';
+  C_VERSION = '1.0.3';
+  C_DATE    = '28/03/2020';
 
   C_ARG_WOT_PATH_WIN32      = '--wot-path=';
   C_ARG_SILENT_MODE_WIN32   = '--silent-mode';
   C_ARG_CREATE_BACKUP_WIN32 = '--no-backup';
   C_ARG_ADD_MARK_WIN32      = '--no-add-mark';
 
-  C_SIGNATURES_FILENAME   = 'signatures.list';
-  C_GITHUB_SIGNATURES_RAW = 'https://raw.githubusercontent.com/StranikS-Scan/WorldOfTanks-MultiStart/master/signatures.list';
+  C_WOT32EXE_FOLDER = 'win32';
+  C_WOT64EXE_FOLDER = 'win64';
+  {$IFDEF WOT32}
+  C_SIGNATURES_FILENAME = 'signatures.list';
+  {$ELSE}
+  C_SIGNATURES_FILENAME = 'signatures64.list';
+  {$ENDIF}
+  C_GITHUB_SIGNATURES_RAW = 'https://raw.githubusercontent.com/StranikS-Scan/WorldOfTanks-MultiStart/master/'+C_SIGNATURES_FILENAME;
 
-  C_MODIFICATION_MARK = 'WMSP';
-  C_DATETIME_MASK    = 'ddmmyyyyhhnnss';
+  C_MODIFICATION_MARK = 'WMSP'; //Wot MultiStart Program
+  C_DATETIME_MASK     = 'ddmmyyyyhhnnss';
+
+  ERROR_XBIT                = 16001;
+  ERROR_ALREADY_PATCHED     = 16002;
+  ERROR_WOTEXE_INVALID      = 16003;
+  ERROR_WOTEXE_NOTFOUND     = 16004;
+  ERROR_WOTVERSION_NOTFOUND = 16005;
+  ERROR_REPO_NOTFOUND       = 16006;
+  ERROR_SIGN_NOTFOUND       = 16007;
 
 var
   V_ARG_WOT_PATH: string       = '';
@@ -490,7 +506,7 @@ type
            Result:=SignsList[i-1]; //Previous sign
           Exit;
           end;
-    Break; //Ñomplete match
+    Break; //Complete match
     finally
     Inc(i);
     end;
@@ -615,7 +631,7 @@ var
   ReplaceResult: RReplaceResult;
 
 begin
-Writeln(Format('MultiStart for WOT ver.%s %s (C) 2014-2019 StranikS_Scan:', [C_VERSION, C_DATE]));
+Writeln(Format('MultiStart for WOT ver.%s %s (C) 2014-2020 StranikS_Scan:', [C_VERSION, C_DATE]));
 Writeln('');
 
 //------------- Parsing command line arguments -------------
@@ -646,17 +662,22 @@ if Length(V_ARG_WOT_PATH)=0 then
 
 Write(C_H_PREFIX+'Game client exe-file search... ');
 Str:=LowerCase(ExtractFileName(LeftStr(V_ARG_WOT_PATH, Length(V_ARG_WOT_PATH)-1)));
-if Pos('win64', Str)>0 then
+if Pos({$IFDEF WOT32}C_WOT64EXE_FOLDER{$ELSE}C_WOT32EXE_FOLDER{$ENDIF}, Str)>0 then
  begin
  Writeln('error!');
  Writeln('');
+ {$IFDEF WOT32}
  Write(C_S_PREFIX+'Program does not work with the x64-file. Press enter to exit...');
+ {$ELSE}
+ Write(C_S_PREFIX+'Program does not work with the x32-file. Press enter to exit...');
+ {$ENDIF}
  if not V_ARG_SILENT_MODE then Readln;
- Halt;
+ Halt(ERROR_XBIT);
  end;
-if (Pos('win32', Str)=0) and DirectoryExists(V_ARG_WOT_PATH+'win32') then
- ExeFileName:=V_ARG_WOT_PATH+'win32\WorldOfTanks.exe'
-else ExeFileName:=V_ARG_WOT_PATH+'WorldOfTanks.exe';
+if (Pos({$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}, Str)=0)and
+   DirectoryExists(V_ARG_WOT_PATH+{$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}) then
+ ExeFileName:=V_ARG_WOT_PATH+{$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}+'\WorldOfTanks.exe'
+else ExeFileName:=V_ARG_WOT_PATH+'WorldOfTanks.exe'; //Old version
 if FileExists(ExeFileName) then
  begin
  i:=Length(C_MODIFICATION_MARK);
@@ -670,7 +691,7 @@ if FileExists(ExeFileName) then
    Writeln('');
    Write(C_S_PREFIX+'Press enter to exit...');
    if not V_ARG_SILENT_MODE then Readln;
-   Halt;
+   Halt(ERROR_ALREADY_PATCHED);
    end
   else Writeln('OK')
  else begin
@@ -678,7 +699,7 @@ if FileExists(ExeFileName) then
       Writeln('');
       Write(C_S_PREFIX+'Game exe-file unavailable or corrupted. Press enter to exit...');
       if not V_ARG_SILENT_MODE then Readln;
-      Halt;
+      Halt(ERROR_WOTEXE_INVALID);
       end;
  end
 else begin
@@ -686,7 +707,7 @@ else begin
      Writeln('');
      Write(C_S_PREFIX+'Copy the program to the game folder. Press enter to exit...');
      if not V_ARG_SILENT_MODE then Readln;
-     Halt;
+     Halt(ERROR_WOTEXE_NOTFOUND);
      end;
 Writeln('');
 XMLFileName:=V_ARG_WOT_PATH+'version.xml';
@@ -715,7 +736,7 @@ if (ExeFileVersion.Count=0)or(ExeProductVersion.Count=0) then
  Writeln('');
  Write(C_S_PREFIX+'Program could not get information. Press enter to exit...');
  if not V_ARG_SILENT_MODE then Readln;
- Halt;
+ Halt(ERROR_WOTVERSION_NOTFOUND);
  end;
 if XmlVersion.Count=0 then
  XmlVersion:=ExeProductVersion;
@@ -758,7 +779,7 @@ else begin
           Writeln('');
           Write(C_S_PREFIX+'Check file availability in repository. Press enter to exit...');
           if not V_ARG_SILENT_MODE then Readln;
-          Halt;
+          Halt(ERROR_REPO_NOTFOUND);
           end;
      end;
 
@@ -783,7 +804,7 @@ else begin
      Writeln('');
      Write(C_S_PREFIX+'Could not find a suitable signature. Press enter to exit...');
      if not V_ARG_SILENT_MODE then Readln;
-     Halt;
+     Halt(ERROR_SIGN_NOTFOUND);
      end;
 
 //-------------- File modification ------------------
@@ -793,8 +814,7 @@ if not V_ARG_SILENT_MODE then
  begin
  Write(C_S_PREFIX+'Patch the game exe-file? [Press Y/N and ENTER] ');
  Readln(Str);
- if not SameText(Str, 'Y') then
-  Halt;
+ if not SameText(Str, 'Y') then Halt;
  end;
 Writeln('');
 Write(C_H_PREFIX+'File "WorldOfTanks.exe" modification... ');
