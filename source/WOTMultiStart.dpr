@@ -8,8 +8,8 @@ uses
 {$DEFINE WOT32} //Do comment line to compile WOT64-version
 
 const
-  C_VERSION = '1.0.3';
-  C_DATE    = '28/03/2020';
+  C_VERSION = '1.0.4';
+  C_DATE    = '17/04/2020';
 
   C_ARG_WOT_PATH_WIN32      = '--wot-path=';
   C_ARG_SILENT_MODE_WIN32   = '--silent-mode';
@@ -37,10 +37,10 @@ const
   ERROR_SIGN_NOTFOUND       = 16007;
 
 var
-  V_ARG_WOT_PATH: string       = '';
-  V_ARG_SILENT_MODE: Boolean   = False;
-  V_ARG_CREATE_BACKUP: Boolean = True;
-  V_ARG_ADD_MARK: Boolean      = True;
+  V_ARG_WOT_PATH: string        = '';
+  V_ARG_SILENT_MODE: Boolean    = False;
+  V_ARG_CREATE_BACKUP: Boolean  = True;
+  V_ARG_ADD_MARK: Boolean       = True;
 
 type
   AByte = array of Byte;
@@ -674,10 +674,14 @@ if Pos({$IFDEF WOT32}C_WOT64EXE_FOLDER{$ELSE}C_WOT32EXE_FOLDER{$ENDIF}, Str)>0 t
  if not V_ARG_SILENT_MODE then Readln;
  Halt(ERROR_XBIT);
  end;
-if (Pos({$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}, Str)=0)and
-   DirectoryExists(V_ARG_WOT_PATH+{$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}) then
- ExeFileName:=V_ARG_WOT_PATH+{$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}+'\WorldOfTanks.exe'
-else ExeFileName:=V_ARG_WOT_PATH+'WorldOfTanks.exe'; //Old version
+if Pos({$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}, Str)>0 then
+ begin
+ ExeFileName:=V_ARG_WOT_PATH+'WorldOfTanks.exe'; //Old version
+ V_ARG_WOT_PATH:=ExtractFilePath(ExtractFileDir(ExeFileName));
+ end
+else if DirectoryExists(V_ARG_WOT_PATH+{$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}) then
+      ExeFileName:=V_ARG_WOT_PATH+{$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}+'\WorldOfTanks.exe'
+     else ExeFileName:='';
 if FileExists(ExeFileName) then
  begin
  i:=Length(C_MODIFICATION_MARK);

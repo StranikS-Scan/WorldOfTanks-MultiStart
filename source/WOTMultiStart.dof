@@ -51,7 +51,7 @@ Conditionals=
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
-RunParams=--wot-path="C:\Games\World_Of_Tanks\win32\"
+RunParams=--wot-path="C:\Games\World_Of_Tanks\"
 HostApplication=
 Launcher=
 UseLauncher=0
