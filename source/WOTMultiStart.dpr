@@ -7,9 +7,16 @@ uses
 
 {$DEFINE WOT32} //Do comment line to compile WOT64-version
 
+{$IFDEF WOT32}
+  {$R Manifest32.res}
+{$ELSE}
+  {$R Manifest64.res}
+{$ENDIF}
+
 const
-  C_VERSION = '1.0.4';
-  C_DATE    = '17/04/2020';
+  C_APP_VERSION = '1.0.5';
+  C_APP_DATE    = '13/10/2021';
+  C_APP_HEADER  = 'MultiStart for WOT ver.%s %s (C) 2014-2021 StranikS_Scan:';
 
   C_ARG_WOT_PATH_WIN32      = '--wot-path=';
   C_ARG_SILENT_MODE_WIN32   = '--silent-mode';
@@ -631,7 +638,7 @@ var
   ReplaceResult: RReplaceResult;
 
 begin
-Writeln(Format('MultiStart for WOT ver.%s %s (C) 2014-2020 StranikS_Scan:', [C_VERSION, C_DATE]));
+Writeln(Format(C_APP_HEADER, [C_APP_VERSION, C_APP_DATE]));
 Writeln('');
 
 //------------- Parsing command line arguments -------------
