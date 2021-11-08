@@ -14,26 +14,31 @@ uses
 {$ENDIF}
 
 const
-  C_APP_VERSION = '1.0.5';
-  C_APP_DATE    = '13/10/2021';
-  C_APP_HEADER  = 'MultiStart for WOT ver.%s %s (C) 2014-2021 StranikS_Scan:';
+  C_APP_VERSION             = '1.0.6';
+  C_APP_DATE                = '08/11/2021';
+  C_APP_HEADER              = 'MultiStart for WOT ver.%s %s (C) 2014-2021 StranikS_Scan:';
 
   C_ARG_WOT_PATH_WIN32      = '--wot-path=';
   C_ARG_SILENT_MODE_WIN32   = '--silent-mode';
   C_ARG_CREATE_BACKUP_WIN32 = '--no-backup';
   C_ARG_ADD_MARK_WIN32      = '--no-add-mark';
 
-  C_WOT32EXE_FOLDER = 'win32';
-  C_WOT64EXE_FOLDER = 'win64';
+  C_WOT32EXE_FOLDER         = 'win32';
+  C_WOT64EXE_FOLDER         = 'win64';
   {$IFDEF WOT32}
-  C_SIGNATURES_FILENAME = 'signatures.list';
+  C_SIGNATURES_FILENAME     = 'signatures.list';
   {$ELSE}
-  C_SIGNATURES_FILENAME = 'signatures64.list';
+  C_SIGNATURES_FILENAME     = 'signatures64.list';
   {$ENDIF}
-  C_GITHUB_SIGNATURES_RAW = 'https://raw.githubusercontent.com/StranikS-Scan/WorldOfTanks-MultiStart/master/'+C_SIGNATURES_FILENAME;
+  C_SIGNATURELIST_URL       = 'https://raw.githubusercontent.com/StranikS-Scan/WorldOfTanks-MultiStart/master/'+C_SIGNATURES_FILENAME;
 
-  C_MODIFICATION_MARK = 'WMSP'; //Wot MultiStart Program
-  C_DATETIME_MASK     = 'ddmmyyyyhhnnss';
+  C_USER_AGENT_DEFAULT      = 'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36';
+  C_CONTENT_TYPE_DEFAULT    = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3';
+
+  C_ATTEMPTS_TIMEOUT        = 500;
+
+  C_MODIFICATION_MARK       = 'WMSP'; //Wot MultiStart Program
+  C_DATETIME_MASK           = 'ddmmyyyyhhnnss';
 
   ERROR_XBIT                = 16001;
   ERROR_ALREADY_PATCHED     = 16002;
@@ -44,10 +49,10 @@ const
   ERROR_SIGN_NOTFOUND       = 16007;
 
 var
-  V_ARG_WOT_PATH: string        = '';
-  V_ARG_SILENT_MODE: Boolean    = False;
-  V_ARG_CREATE_BACKUP: Boolean  = True;
-  V_ARG_ADD_MARK: Boolean       = True;
+  V_ARG_WOT_PATH: string       = '';
+  V_ARG_SILENT_MODE: Boolean   = False;
+  V_ARG_CREATE_BACKUP: Boolean = True;
+  V_ARG_ADD_MARK: Boolean      = True;
 
 type
   AByte = array of Byte;
@@ -77,7 +82,7 @@ type
     XmlVersion, ExeVersion: RVersion;
   end;
 
-  TStatus = (OK, NotFound, NotBackup, Error);
+  TStatus = (StOK, StNotFound, StNotBackup, StError);
 
   RReplaceResult = record
     Status: TStatus;
@@ -121,7 +126,8 @@ type
   end;
   end;
 
-  function GetXMLVersion(const FileName: string): RVersion; //Numbers=[1,6,0,1]; Text="1.6.0.1"; Count=4; ID=1242
+  //Numbers=[1,6,0,1]; Text="1.6.0.1"; Count=4; ID=1242
+  function GetXMLVersion(const FileName: string): RVersion;
   var SList: TStringList;
       i: Integer;
       Str: string;
@@ -172,14 +178,13 @@ type
    end;
   end;
 
-  function GetFileVersion(const FileName: string): RVersion; //Numbers=[1,6,0,280]; Text="1.6.0.280"; Count=4; ID=123232
-  var PInfo: Pointer;
-      InfoSize: DWORD;
+  //Numbers=[1,6,0,280]; Text="1.6.0.280"; Count=4; ID=123232
+  function GetFileVersion(const FileName: string): RVersion;
+  var PInfo, PLang: Pointer;
+      lpdwHandle, InfoSize, FileInfoSize: Cardinal;
       FileInfo: PVSFixedFileInfo;
-      TranslateBuffer, FileVersionText: PChar;
-      FileInfoSize: DWORD;
-      Lang: string;
-      Tmp: DWORD;
+      TranslationString: string;
+      FileVersionText: PChar;
   begin
   with Result do
    begin
@@ -188,55 +193,48 @@ type
    Text:='';
    end;
   try
-  InfoSize:=GetFileVersionInfoSize(PChar(FileName), Tmp);
+  InfoSize:=GetFileVersionInfoSize(PChar(FileName), lpdwHandle);
   if InfoSize<>0 then
    begin
    GetMem(PInfo, InfoSize);
    try
-   GetFileVersionInfo(PChar(FileName), 0, InfoSize, PInfo);
-   //FILEVERSION 1,6,0,280
-   VerQueryValue(PInfo, '\', Pointer(FileInfo), FileInfoSize);
-   with Result do
+   if GetFileVersionInfo(PChar(FileName), lpdwHandle, InfoSize, PInfo) then
     begin
-    Count:=4;
-    SetLength(Numbers, Count);
-    Numbers[0]:=FileInfo.dwFileVersionMS shr 16;
-    Numbers[1]:=FileInfo.dwFileVersionMS and $FFFF;
-    Numbers[2]:=FileInfo.dwFileVersionLS shr 16;
-    Numbers[3]:=FileInfo.dwFileVersionLS and $FFFF;
-    Text:=Format('%d.%d.%d.%d', [Numbers[0], Numbers[1], Numbers[2], Numbers[3]]);
-    end;
-   //VALUE "Translation", 0x0000 0x04B0
-   VerQueryValue(PInfo, '\VarFileInfo\Translation', Pointer(TranslateBuffer), FileInfoSize);
-   if FileInfoSize>=4 then
-    begin
-    Tmp:=0;
-    StrLCopy(@Tmp, TranslateBuffer, 2);
-    Lang:=IntToHex(Tmp, 4);
-    StrLCopy(@Tmp, TranslateBuffer+2, 2);
-    Lang:=Lang+IntToHex(Tmp, 4);
-    //VALUE "FileVersion", "1.6.0.280 #1198938"
-    if VerQueryValue(PInfo, PChar('StringFileInfo\'+Lang+'\FileVersion'), Pointer(FileVersionText), FileInfoSize) then
-     begin
-     Result.Text:=FileVersionText;
-     if Pos('#', FileVersionText)>0 then
-      Result.ID:=StrToIntDef(RightStr(Result.Text, Length(Result.Text)-1-(Pos('#', FileVersionText)-1)), 0);
+    if VerQueryValue(PInfo, '\', Pointer(FileInfo), FileInfoSize)and(FileInfoSize>0) then
+     with Result do //FILEVERSION 1,6,0,280
+      begin
+      Count:=4;
+      SetLength(Numbers, Count);
+      Numbers[0]:=FileInfo.dwFileVersionMS shr 16;
+      Numbers[1]:=FileInfo.dwFileVersionMS and $FFFF;
+      Numbers[2]:=FileInfo.dwFileVersionLS shr 16;
+      Numbers[3]:=FileInfo.dwFileVersionLS and $FFFF;
+      Text:=Format('%d.%d.%d.%d', [Numbers[0], Numbers[1], Numbers[2], Numbers[3]]);
+      end;
+    if VerQueryValue(PInfo, '\VarFileInfo\Translation', PLang, FileInfoSize)and(FileInfoSize>0) then
+     begin //VALUE "Translation", 0x0000 0x04B0
+     TranslationString:=IntToHex(MakeLong(HiWord(Longint(PLang^)), LoWord(Longint(PLang^))), 8);
+     if VerQueryValue(PInfo, PChar('StringFileInfo\'+TranslationString+'\FileVersion'), Pointer(FileVersionText), FileInfoSize)and(FileInfoSize>0) then
+      begin //VALUE "FileVersion", "1.6.0.280 #1198938"
+      Result.Text:=FileVersionText;
+      if Pos('#', FileVersionText)>0 then
+       Result.ID:=StrToIntDef(RightStr(Result.Text, Length(Result.Text)-1-(Pos('#', FileVersionText)-1)), 0);
+      end;
      end;
     end;
    finally
-   FreeMem(PInfo, InfoSize);
+   FreeMem(PInfo);
    end;
    end;
   except
   end;
   end;
 
-  function GetProductVersion(const FileName: string): RVersion; //Numbers=[1,6,0,0]; Text="1.6.0.0"; Count=4; ID=0
+  //Numbers=[1,6,0,0]; Text="1.6.0.0"; Count=4; ID=0
+  function GetProductVersion(const FileName: string): RVersion;
   var PInfo: Pointer;
-      InfoSize: DWORD;
+      lpdwHandle, InfoSize, FileInfoSize: Cardinal;
       FileInfo: PVSFixedFileInfo;
-      FileInfoSize: DWORD;
-      Tmp: DWORD;
   begin
   with Result do
    begin
@@ -245,26 +243,25 @@ type
    Text:='';
    end;
   try
-  InfoSize:=GetFileVersionInfoSize(PChar(FileName), Tmp);
+  InfoSize:=GetFileVersionInfoSize(PChar(FileName), lpdwHandle);
   if InfoSize<>0 then
    begin
    GetMem(PInfo, InfoSize);
    try
-   GetFileVersionInfo(PChar(FileName), 0, InfoSize, PInfo);
-   //PRODUCTVERSION 1,6,0,0
-   VerQueryValue(PInfo, '\', Pointer(FileInfo), FileInfoSize);
-   with Result do
-    begin
-    Count:=4;
-    SetLength(Numbers, Count);
-    Numbers[0]:=FileInfo.dwProductVersionMS shr 16;
-    Numbers[1]:=FileInfo.dwProductVersionMS and $FFFF;
-    Numbers[2]:=FileInfo.dwProductVersionLS shr 16;
-    Numbers[3]:=FileInfo.dwProductVersionLS and $FFFF;
-    Text:=Format('%d.%d.%d.%d', [Numbers[0], Numbers[1], Numbers[2], Numbers[3]]);
-    end;
+   if GetFileVersionInfo(PChar(FileName), lpdwHandle, InfoSize, PInfo) then
+    if VerQueryValue(PInfo, '\', Pointer(FileInfo), FileInfoSize)and(FileInfoSize>0) then
+     with Result do //PRODUCTVERSION 1,6,0,0
+      begin
+      Count:=4;
+      SetLength(Numbers, Count);
+      Numbers[0]:=FileInfo.dwProductVersionMS shr 16;
+      Numbers[1]:=FileInfo.dwProductVersionMS and $FFFF;
+      Numbers[2]:=FileInfo.dwProductVersionLS shr 16;
+      Numbers[3]:=FileInfo.dwProductVersionLS and $FFFF;
+      Text:=Format('%d.%d.%d.%d', [Numbers[0], Numbers[1], Numbers[2], Numbers[3]]);
+      end;
    finally
-   FreeMem(PInfo, InfoSize);
+   FreeMem(PInfo);
    end;
    end;
   except
@@ -272,31 +269,43 @@ type
   end;
 
   function DownloadSignsText(): string;
-  var Session, Url: HInternet;
+  var hSession, hUrl: HInternet;
+      Header: TStringStream;
       BlockSize, BlockLen: Cardinal;
-      Str: string;
+      i, HeaderLength: Integer;
+      Buffer: string;
       Error: Boolean;
-      i: Integer;
   begin
   Result:='';
-  Session:=InternetOpen(PChar(ExtractFileName(ParamStr(0))), INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);
-  if Assigned(Session) then
+  hSession:=InternetOpen(nil, INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);
+  if Assigned(hSession) then
    try
-   Error:=True;
+   //-------------- Settings --------------
+   Header:=TStringStream.Create('');
+   try
+   with Header do
+    begin
+    WriteString('User-Agent: ' + C_USER_AGENT_DEFAULT   + #13#10);
+    WriteString('Accept: '     + C_CONTENT_TYPE_DEFAULT + #13#10);
+    end;
+   HeaderLength:=Length(Header.DataString);
+   //-------------- Download --------------
    i:=1;
+   Error:=True;
    while Error and (i<4) do
     try
-    Url:=InternetOpenUrl(Session, PChar(C_GITHUB_SIGNATURES_RAW), nil, 0, 0, 0);
-    if not Assigned(Url) then
+    hUrl:=InternetOpenUrl(hSession, PChar(C_SIGNATURELIST_URL), PChar(Header.DataString), HeaderLength,
+                          INTERNET_FLAG_RELOAD or INTERNET_FLAG_NO_CACHE_WRITE or INTERNET_FLAG_KEEP_CONNECTION, 0);
+    if not Assigned(hUrl) then
      raise Exception.Create('');
-    InternetQueryDataAvailable(Url, BlockSize, 0, 0);
-    while BlockSize<>0 do
+    InternetQueryDataAvailable(hUrl, BlockSize, 0, 0);
+    while BlockSize>0 do
      begin
-     SetLength(Str, BlockSize);
-     if not InternetReadFile(Url, @Str[1], BlockSize, BlockLen) or (BlockLen=0) then
+     SetLength(Buffer, BlockSize);
+     if not InternetReadFile(hUrl, @Buffer[1], BlockSize, BlockLen)or(BlockLen=0) then
       Break;
-     Result:=Result+Str;
-     InternetQueryDataAvailable(Url, BlockSize, 0, 0);
+     Result:=Result+Buffer;
+     InternetQueryDataAvailable(hUrl, BlockSize, 0, 0);
      end;
     if Length(Result)=0 then
      raise Exception.Create('');
@@ -304,15 +313,19 @@ type
     except
     Inc(i);
     if i=4 then Break
-    else Sleep(500);
+    else Sleep(C_ATTEMPTS_TIMEOUT);
     end;
    finally
-   InternetCloseHandle(Session);
+   Header.Free;
+   end;
+   finally
+   InternetCloseHandle(hSession);
    end
   end;
 
   function SearchNearestSign(const SignsText: string; const XmlVersion, ExeFileVersion: RVersion): RSign;
-    function ParseNumbers(const Text: string; var Numbers: AInteger): Integer; //"1.6.0" -> [1,6,0]
+    //"1.6.0" -> [1,6,0]
+    function ParseNumbers(const Text: string; var Numbers: AInteger): Integer;
     var i: Integer;
         Str: string;
     begin
@@ -373,7 +386,8 @@ type
      end;
     end;
 
-    function CompareNumbers(const NumbersA, NumbersB: AInteger): Integer; //A>B=1, (A=B)=0, A<B=-1
+    //A>B=1, (A=B)=0, A<B=-1
+    function CompareNumbers(const NumbersA, NumbersB: AInteger): Integer;
     var i, LenA, LenB, LenMax: Integer;
     begin
     Result:=0;
@@ -423,14 +437,14 @@ type
   for i:=0 to SignsTextList.Count-1 do
    begin
    Str:=Trim(SignsTextList.Strings[i]);
-   if (Str='')or(Str[1]='#') then Continue;
-   //--- String parsing ---
+   if (Str='')or(Str[1]='#') then
+    Continue;
+   //-------------- String parsing --------------
    ValueList.Clear();
    ValueList.Append('');
    isHexList:=False;
    k:=0;
    for j:=1 to Length(Str) do
-    begin
     if not isHexList and (Str[j] in [' ', #9]) then
      begin
      if ValueList.Strings[ValueList.Count-1]<>'' then
@@ -439,16 +453,13 @@ type
       Inc(k);
       end;
      end
-    else begin
-         case Str[j] of
+    else case Str[j] of
          '#': Break;
          '[': isHexList:=True;
          ']': isHexList:=False;
          else ValueList.Strings[k]:=ValueList.Strings[k]+Str[j];
          end;
-         end;
-    end;
-   //--- Convert values to RSign ---
+   //-------------- Convert values to RSign --------------
    if ValueList.Count>=6 then
     begin
     j:=Length(SignsList);
@@ -481,7 +492,7 @@ type
   ValueList.Free;
   SignsTextList.Free;
   end;
-  //--- Signatures comparison ---
+  //-------------- Signatures comparison --------------
   if Length(SignsList)>0 then
    begin
    i:=0;
@@ -495,7 +506,7 @@ type
                       Result:=SignsList[i-1]; //Previous sign
                      Exit;
                      end;
-    //---
+    //--------------
     if SignsList[i].ExeVersion.Count=0 then Continue;
     j:=CompareNumbers(SignsList[i].ExeVersion.Numbers, ExeFileVersion.Numbers);
     if j=-1 then Continue
@@ -504,7 +515,7 @@ type
                       Result:=SignsList[i-1]; //Previous sign
                      Exit;
                      end;
-    //---
+    //--------------
     if SignsList[i].ExeVersion.ID=0 then Continue;
     if SignsList[i].ExeVersion.ID<ExeFileVersion.ID then Continue
     else if SignsList[i].ExeVersion.ID>ExeFileVersion.ID then
@@ -547,17 +558,20 @@ type
   begin
   with Result do
    begin
-   Status:=NotFound;
+   Status:=StNotFound;
    ErrorMsg:='';
    end;
   if FileExists(FileName) then
    try
    AssignFile(F, FileName);
    Reset(F, 1);
+   try
    SetLength(Buffer, FileSize(F));
    if Length(Buffer)>0 then
     BlockRead(F, Buffer[0], Length(Buffer));
+   finally
    CloseFile(F);
+   end;
    if Length(Buffer)>0 then
     begin
     i:=0;
@@ -597,10 +611,11 @@ type
      if V_ARG_CREATE_BACKUP then
       if not CreateBackup(FileName) then
        begin
-       Result.Status:=NotBackup;
+       Result.Status:=StNotBackup;
        Exit;
        end;
      ReWrite(F, 1);
+     try
      Seek(F, 0);
      BlockWrite(F, Buffer[0], Length(Buffer));
      if V_ARG_ADD_MARK then
@@ -609,19 +624,21 @@ type
       Str:=ReverseString(C_MODIFICATION_MARK+Str); //WMSP26082019095112 -> 21159091028062PSMW
       BlockWrite(F, Str[1], Length(Str));
       end;
+     finally
      CloseFile(F);
-     Result.Status:=Ok;
+     end;
+     Result.Status:=StOK;
      end;
     SetLength(Buffer, 0);
     Buffer:=nil;
     end;
    except
-    on E: Exception do
-     with Result do
-      begin
-      Status:=Error;
-      ErrorMsg:=E.Message;
-      end;
+   on E: Exception do
+    with Result do
+     begin
+     Status:=StError;
+     ErrorMsg:=E.Message;
+     end;
    end;
   end;
 
@@ -630,12 +647,11 @@ const
   C_S_PREFIX = '    ';
   C_L_PREFIX = '          ';
 
-var
-  i,j: Integer;
-  Str, XMLFileName, ExeFileName, SignsText: string;
-  XmlVersion, ExeProductVersion, ExeFileVersion: RVersion;
-  Sign: RSign;
-  ReplaceResult: RReplaceResult;
+var i,j: Integer;
+    Str, XMLFileName, ExeFileName, SignsText: string;
+    XmlVersion, ExeProductVersion, ExeFileVersion: RVersion;
+    Sign: RSign;
+    ReplaceResult: RReplaceResult;
 
 begin
 Writeln(Format(C_APP_HEADER, [C_APP_VERSION, C_APP_DATE]));
@@ -735,13 +751,13 @@ Writeln('');
 Writeln(C_S_PREFIX+'File: '+ExeFileName);
 ExeFileVersion:=GetFileVersion(ExeFileName);
 if ExeFileVersion.Count>0 then
- Writeln(C_L_PREFIX+'FileVersion: '+ExeFileVersion.Text)
-else Writeln(C_L_PREFIX+'FileVersion: not decoded!');
+     Writeln(C_L_PREFIX+'FileVersion:    '+ExeFileVersion.Text)
+else Writeln(C_L_PREFIX+'FileVersion:    not decoded!');
 ExeProductVersion:=GetProductVersion(ExeFileName);
 if ExeProductVersion.Count>0 then
- Writeln(C_L_PREFIX+'ProductVersion: '+ExeProductVersion.Text)
+     Writeln(C_L_PREFIX+'ProductVersion: '+ExeProductVersion.Text)
 else Writeln(C_L_PREFIX+'ProductVersion: not decoded!');
-Writeln(C_L_PREFIX+Format('FileSize: %d', [GetFileSize(ExeFileName)]));
+Writeln(C_L_PREFIX+Format('FileSize:       %d', [GetFileSize(ExeFileName)]));
 if (ExeFileVersion.Count=0)or(ExeProductVersion.Count=0) then
  begin
  Writeln('');
@@ -803,12 +819,13 @@ if Length(Sign.OldSign)>0 then
  begin
  Writeln('OK');
  Writeln('');
- Writeln(C_S_PREFIX+'ClientVersion: '+Sign.XmlVersion.Text);
+ Writeln(C_S_PREFIX+'Signature parameters');
+ Writeln(C_L_PREFIX+'ClientVersion: '+Sign.XmlVersion.Text);
  if Length(Sign.ExeVersion.Text)>0 then
   if Sign.ExeVersion.ID>0 then
-   Writeln(C_S_PREFIX+'FileVersion: '+Sign.ExeVersion.Text+' #'+IntToStr(Sign.ExeVersion.ID))
-  else Writeln(C_S_PREFIX+'FileVersion: '+Sign.ExeVersion.Text)
- else Writeln(C_S_PREFIX+'FileVersion: -');
+       Writeln(C_L_PREFIX+'FileVersion:   '+Sign.ExeVersion.Text+' #'+IntToStr(Sign.ExeVersion.ID))
+  else Writeln(C_L_PREFIX+'FileVersion:   '+Sign.ExeVersion.Text)
+ else  Writeln(C_L_PREFIX+'FileVersion:   -');
  end
 else begin
      Writeln('not found!');
@@ -831,32 +848,33 @@ Writeln('');
 Write(C_H_PREFIX+'File "WorldOfTanks.exe" modification... ');
 ReplaceResult:=ReplaceSignInFile(ExeFileName, Sign);
 case ReplaceResult.Status of
-OK: begin
-    Writeln('OK');
-    Writeln('');
-    Write(C_S_PREFIX+'Press enter to exit...');
-    end;
-NotFound: begin
-          Writeln('not found!');
-          Writeln('');
-          Write(C_S_PREFIX+'Could not find match with signature in game file, maybe the file is already patched or not included in the list of signatures. Press enter to exit...');
-          end;
-NotBackup: begin
-           Writeln('canceled!');
-           Writeln('');
-           Write(C_S_PREFIX+'Unable to create backup-file, no access. Press enter to exit...');
-           end;
-Error: begin
-       Writeln('error!');
-       Writeln('');
-       if Length(ReplaceResult.ErrorMsg)>0 then
-        begin
-        if ReplaceResult.ErrorMsg[Length(ReplaceResult.ErrorMsg)]<>'.' then
-         ReplaceResult.ErrorMsg:=ReplaceResult.ErrorMsg+'.';
-        Write(C_S_PREFIX+ReplaceResult.ErrorMsg+' Press enter to exit...');
-        end
-       else Write(C_S_PREFIX+'Press enter to exit...');
-       end;
+StOK: begin
+      Writeln('OK');
+      Writeln('');
+      Write(C_S_PREFIX+'Press enter to exit...');
+      end;
+StNotFound: begin
+            Writeln('not found!');
+            Writeln('');
+            Write(C_S_PREFIX+'Could not find match with signature in game file, maybe the file is already patched or not included in the list of signatures. Press enter to exit...');
+            end;
+StNotBackup: begin
+             Writeln('canceled!');
+             Writeln('');
+             Write(C_S_PREFIX+'Unable to create backup-file, no access. Press enter to exit...');
+             end;
+else begin
+     Writeln('error!');
+     Writeln('');
+     if Length(ReplaceResult.ErrorMsg)>0 then
+      begin
+      if ReplaceResult.ErrorMsg[Length(ReplaceResult.ErrorMsg)]<>'.' then
+       ReplaceResult.ErrorMsg:=ReplaceResult.ErrorMsg+'.';
+      Write(C_S_PREFIX+ReplaceResult.ErrorMsg+' Press enter to exit...');
+      end
+     else Write(C_S_PREFIX+'Press enter to exit...');
+     end;
 end;
-if not V_ARG_SILENT_MODE then Readln;
+if not V_ARG_SILENT_MODE then
+ Readln;
 end.

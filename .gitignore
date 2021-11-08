@@ -1,4 +1,4 @@
-*.exe
+source/*.exe
 *.dll
 *.dcu
 *~*
