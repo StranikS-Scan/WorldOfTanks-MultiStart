@@ -1,8 +1,8 @@
 # WorldOfTanks-MultiStart
 
-Patcher for the x32 and x64 executable files to unlock multi-launch in the game client. The program uses the well-known list of signatures and downloading it from repo. You can download list manually and put it in the program folder, in this case program will not download list from the network.
+Patcher for the **x32** and **x64** executable files to unlock multi-launch in the game client for **Lesta** and **Wargaming**. The program uses the well-known list of signatures and downloading it from repo. You can download list manually and put it in the program folder, in this case program will not download list from the network.
 
-The program initially tries to determine the version of the game client from the **"version.xml"** file. Then it analyzes the version of the **"winXX\WorldOfTanks.exe"** file. If the file **"version.xml"** is not available then the game client version is taken from the **exe**-file properties only. After that, the program tries to find the exact entry in the list of signatures. If she is not there, program finds the nearest known record and offers to use it. So, if the signature does not change when new versions of the game are released, then you do not need to make a new entry in the list of signatures.
+The program initially tries to determine the version of the game client from the **"version.xml"** file. Then it analyzes the version of the **"winXX\XXX.exe"** file. If the file **"version.xml"** is not available then the game client version is taken from the **exe**-file properties only. After that, the program tries to find the exact entry in the list of signatures. If she is not there, program finds the nearest known record and offers to use it. So, if the signature does not change when new versions of the game are released, then you do not need to make a new entry in the list of signatures.
 
 ![ScreenShot](./Example.png)
 
@@ -11,7 +11,7 @@ The program initially tries to determine the version of the game client from the
 1. Download the [archive](./zip/) and unzip the **exe**-file to the game **root**-folder or **winXX**-folder
 2. Run the **exe**-file to patch the game executable
 
-If you want to patch the x32 game exe-file, then use the WOT32 program file, otherwise use WOT64 program file. When patching an executable file, the program first creates a backup in the form of a **"*.backup"** file. If you want to roll back the changes made by the program, delete the patched file and change the extansion of the backup file to the original one.
+If you want to patch the **x32** game exe-file, then use the **WOT32** program file, otherwise use **WOT64** program file. When patching an executable file, the program first creates a backup in the form of a **"*.backup"** file. If you want to roll back the changes made by the program, delete the patched file and change the extansion of the backup file to the original one.
 
 ## Command line arguments (for mods developers)
 
@@ -39,16 +39,17 @@ ERROR_SIGN_NOTFOUND       | 16007 | No signature found suitable for WOT exe-file
 
 ## Add signature to list
 
-Signatures are recorded in the [signatures.list](./signatures.list) and [signatures64.list](./signatures64.list) files. One line corresponds to one record. Lines are written in the order of increasing the version number of the game client and the **exe**-file version number of the game. The following is the decryption of the fields:
+Signatures are recorded in the [signatures32.list](./signatures32.list) and [signatures64.list](./signatures64.list) files. One line corresponds to one record. Lines are written in the order of increasing the version number of the game client and the **exe**-file version number of the game. The following is the decryption of the fields:
 
-Field         | Format   | Description
---------------|----------|-----------------------------------------------------------
-ClientVersion | N.N.N... | Game client version number from the **"version.xml"** file
-FileVersion   | N.N.N... | Value of the **"FileVersion"** field from the properties of the game **exe**-file. If the value is not known, put a hyphen
-FileID        |   N      | ID number of the **exe**-file, located after the **#** symbol in the **"FileVersion"** field. If the value is not known, put a hyphen
-OldSign       | [Hexs]   | Signature to find
-NewSign       | [Hexs]   | Signature to replace
-EntryNumber   |   N      | Match number at which to replace, for example: 1 - replace once only at the first match, 2 - replace once and only at the second match. If the field is hyphen, then all found matches will be replaced
+Field         | Format      | Description
+--------------|-------------|-----------------------------------------------------------
+Game          | ALL/LMT/WOT | Indication of the game's affiliation: **LMT**-for Lesta game, **WOT**-for Wargaming game, **ALL**-for both games at once
+ClientVersion | N.N.N...    | Game client version number from the **"version.xml"** file
+FileVersion   | N.N.N...    | Value of the **"FileVersion"** field from the properties of the game **exe**-file. If the value is not known, put a hyphen
+FileID        |   N         | ID number of the **exe**-file, located after the **#** symbol in the **"FileVersion"** field. If the value is not known, put a hyphen
+OldSign       | [Hexs]      | Signature to find
+NewSign       | [Hexs]      | Signature to replace
+EntryNumber   |   N         | Match number at which to replace, for example: 1 - replace once only at the first match, 2 - replace once and only at the second match. If the field is hyphen, then all found matches will be replaced
 
 **OldSign** and **newSign** fields contain the signatures themselves. The signature is specified as a sequence of bytes, which should be separated by a space or tab. if any bytes should be ignored then they can be replaced as **XX**.
 

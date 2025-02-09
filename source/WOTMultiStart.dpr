@@ -5,7 +5,7 @@ program WOTMultiStart;
 uses
   Windows, Classes, SysUtils, StrUtils, WinInet;
 
-{$DEFINE WOT32} //Do comment line to compile WOT64-version
+//{$DEFINE WOT32} //Do comment line to compile WOT64-version
 
 {$IFDEF WOT32}
   {$R Manifest32.res}
@@ -14,25 +14,27 @@ uses
 {$ENDIF}
 
 const
-  C_APP_VERSION             = '1.0.6';
-  C_APP_DATE                = '08/11/2021';
-  C_APP_HEADER              = 'MultiStart for WOT ver.%s %s (C) 2014-2021 StranikS_Scan:';
+  C_APP_VERSION             = '1.0.7';
+  C_APP_DATE                = '09/02/2025';
+  C_APP_HEADER              = 'MultiStart for WOT/MT ver.%s %s (C) 2014-2025 StranikS_Scan:';
 
   C_ARG_WOT_PATH_WIN32      = '--wot-path=';
   C_ARG_SILENT_MODE_WIN32   = '--silent-mode';
   C_ARG_CREATE_BACKUP_WIN32 = '--no-backup';
   C_ARG_ADD_MARK_WIN32      = '--no-add-mark';
 
+  C_WOTEXE_FILENAME         = 'WorldOfTanks.exe';
+  C_LMTEXE_FILENAME         = 'Tanki.exe';
   C_WOT32EXE_FOLDER         = 'win32';
   C_WOT64EXE_FOLDER         = 'win64';
   {$IFDEF WOT32}
-  C_SIGNATURES_FILENAME     = 'signatures.list';
+  C_SIGNATURES_FILENAME     = 'signatures32.list';
   {$ELSE}
   C_SIGNATURES_FILENAME     = 'signatures64.list';
   {$ENDIF}
   C_SIGNATURELIST_URL       = 'https://raw.githubusercontent.com/StranikS-Scan/WorldOfTanks-MultiStart/master/'+C_SIGNATURES_FILENAME;
 
-  C_USER_AGENT_DEFAULT      = 'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36';
+  C_USER_AGENT_DEFAULT      = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.3';
   C_CONTENT_TYPE_DEFAULT    = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3';
 
   C_ATTEMPTS_TIMEOUT        = 500;
@@ -323,7 +325,7 @@ type
    end
   end;
 
-  function SearchNearestSign(const SignsText: string; const XmlVersion, ExeFileVersion: RVersion): RSign;
+  function SearchNearestSign(const SignsText: string; const isLMT: Boolean; const XmlVersion, ExeFileVersion: RVersion): RSign;
     //"1.6.0" -> [1,6,0]
     function ParseNumbers(const Text: string; var Numbers: AInteger): Integer;
     var i: Integer;
@@ -440,6 +442,7 @@ type
    if (Str='')or(Str[1]='#') then
     Continue;
    //-------------- String parsing --------------
+   //ALL  1.8.0.1  1.8.0.364  1315751  [0F 84 85 00 00 00 E8]  [E9 86 00 00 00 00 E8]  1
    ValueList.Clear();
    ValueList.Append('');
    isHexList:=False;
@@ -460,18 +463,25 @@ type
          else ValueList.Strings[k]:=ValueList.Strings[k]+Str[j];
          end;
    //-------------- Convert values to RSign --------------
-   if ValueList.Count>=6 then
+   if ValueList.Count>6 then
     begin
+    if ValueList.Strings[0]<>'ALL' then
+     if ValueList.Strings[0]='WOT' then
+      begin
+      if isLMT then Continue;
+      end
+     else if ValueList.Strings[0]='LMT' then
+           if not isLMT then Continue;
     j:=Length(SignsList);
     SetLength(SignsList, j+1);
-    SignsList[j].XmlVersion.Text:=ValueList.Strings[0];
+    SignsList[j].XmlVersion.Text:=ValueList.Strings[1];
     SignsList[j].XmlVersion.Count:=ParseNumbers(SignsList[j].XmlVersion.Text, SignsList[j].XmlVersion.Numbers);
-    if ValueList.Strings[1]<>'-' then
+    if ValueList.Strings[2]<>'-' then
      begin
-     SignsList[j].ExeVersion.Text:=ValueList.Strings[1];
+     SignsList[j].ExeVersion.Text:=ValueList.Strings[2];
      SignsList[j].ExeVersion.Count:=ParseNumbers(SignsList[j].ExeVersion.Text, SignsList[j].ExeVersion.Numbers);
-     if ValueList.Strings[2]<>'-' then
-      SignsList[j].ExeVersion.ID:=StrToIntDef(ValueList.Strings[2], 0)
+     if ValueList.Strings[3]<>'-' then
+      SignsList[j].ExeVersion.ID:=StrToIntDef(ValueList.Strings[3], 0)
      else SignsList[j].ExeVersion.ID:=0;
      end
     else begin
@@ -480,11 +490,11 @@ type
          SetLength(SignsList[j].ExeVersion.Numbers, 0);
          SignsList[j].ExeVersion.ID:=0;
          end;
-    ParseBytes(ValueList.Strings[3], SignsList[j].OldSign);
-    ParseBytes(ValueList.Strings[4], SignsList[j].NewSign);
-    SignsList[j].EntryNumber.All:=(ValueList.Strings[5]='-');
+    ParseBytes(ValueList.Strings[4], SignsList[j].OldSign);
+    ParseBytes(ValueList.Strings[5], SignsList[j].NewSign);
+    SignsList[j].EntryNumber.All:=(ValueList.Strings[6]='-');
     if not SignsList[j].EntryNumber.All then
-     SignsList[j].EntryNumber.Number:=StrToIntDef(ValueList.Strings[5], 1);
+     SignsList[j].EntryNumber.Number:=StrToIntDef(ValueList.Strings[6], 1);
     end
    else Continue;
    end;
@@ -699,11 +709,22 @@ if Pos({$IFDEF WOT32}C_WOT64EXE_FOLDER{$ELSE}C_WOT32EXE_FOLDER{$ENDIF}, Str)>0 t
  end;
 if Pos({$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}, Str)>0 then
  begin
- ExeFileName:=V_ARG_WOT_PATH+'WorldOfTanks.exe'; //Old version
- V_ARG_WOT_PATH:=ExtractFilePath(ExtractFileDir(ExeFileName));
+ ExeFileName:=V_ARG_WOT_PATH+C_WOTEXE_FILENAME;
+ if not FileExists(ExeFileName) then
+  ExeFileName:=V_ARG_WOT_PATH+C_LMTEXE_FILENAME;
+ if FileExists(ExeFileName) then
+  V_ARG_WOT_PATH:=ExtractFilePath(ExtractFileDir(ExeFileName))
+ else ExeFileName:='';
  end
 else if DirectoryExists(V_ARG_WOT_PATH+{$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}) then
-      ExeFileName:=V_ARG_WOT_PATH+{$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}+'\WorldOfTanks.exe'
+      begin
+      Str:=V_ARG_WOT_PATH+{$IFDEF WOT32}C_WOT32EXE_FOLDER{$ELSE}C_WOT64EXE_FOLDER{$ENDIF}+'\';
+      ExeFileName:=Str+C_WOTEXE_FILENAME;
+      if not FileExists(ExeFileName) then
+       ExeFileName:=Str+C_LMTEXE_FILENAME;
+      if not FileExists(ExeFileName) then
+       ExeFileName:='';
+      end
      else ExeFileName:='';
 if FileExists(ExeFileName) then
  begin
@@ -749,6 +770,9 @@ if FileExists(XMLFileName) then
 else Writeln(C_L_PREFIX+'Version: not found!');
 Writeln('');
 Writeln(C_S_PREFIX+'File: '+ExeFileName);
+if SameText(ExtractFileName(ExeFileName), C_LMTEXE_FILENAME) then
+     Writeln(C_L_PREFIX+'FileVendor:     Lesta Games')
+else Writeln(C_L_PREFIX+'FileVendor:     Wargaming.net');
 ExeFileVersion:=GetFileVersion(ExeFileName);
 if ExeFileVersion.Count>0 then
      Writeln(C_L_PREFIX+'FileVersion:    '+ExeFileVersion.Text)
@@ -814,7 +838,7 @@ else begin
 
 Writeln('');
 Write(C_H_PREFIX+'Nearest signature search... ');
-Sign:=SearchNearestSign(SignsText, XmlVersion, ExeFileVersion);
+Sign:=SearchNearestSign(SignsText, SameText(ExtractFileName(ExeFileName), C_LMTEXE_FILENAME), XmlVersion, ExeFileVersion);
 if Length(Sign.OldSign)>0 then
  begin
  Writeln('OK');
@@ -845,7 +869,7 @@ if not V_ARG_SILENT_MODE then
  if not SameText(Str, 'Y') then Halt;
  end;
 Writeln('');
-Write(C_H_PREFIX+'File "WorldOfTanks.exe" modification... ');
+Write(C_H_PREFIX+Format('File "%s" modification... ', [ExtractFileName(ExeFileName)]));
 ReplaceResult:=ReplaceSignInFile(ExeFileName, Sign);
 case ReplaceResult.Status of
 StOK: begin
@@ -859,7 +883,7 @@ StNotFound: begin
             Write(C_S_PREFIX+'Could not find match with signature in game file, maybe the file is already patched or not included in the list of signatures. Press enter to exit...');
             end;
 StNotBackup: begin
-             Writeln('canceled!');
+             Writeln('completed!');
              Writeln('');
              Write(C_S_PREFIX+'Unable to create backup-file, no access. Press enter to exit...');
              end;

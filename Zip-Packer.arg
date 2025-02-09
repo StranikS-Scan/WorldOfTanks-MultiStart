@@ -1,4 +1,4 @@
 #-------------------- Zip-Packer parameters --------------------
 
 exe  = "C:\Program Files\7-Zip\7z.exe"
-arg  = "a -tzip -mx9 zip\WOTMultiStart_1.0.6.zip .\source\WOT32MultiStart.exe .\source\WOT64MultiStart.exe"
+arg  = "a -tzip -mx9 zip\WOTMultiStart_1.0.7.zip .\source\WOT32MultiStart.exe .\source\WOT64MultiStart.exe"
